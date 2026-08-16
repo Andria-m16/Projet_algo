@@ -1,6 +1,186 @@
 from tkinter import *
 from random import *
 
+# ==================== FONCTIONS DE L'APPLICATION ====================
+
+def verifier_caracteristiques1(i_debut, i_fin, limite, pvb):
+    pvb1 = pvb[i_debut]
+    pvb2 = pvb[i_fin]
+
+    # Si le proverbes de départ est une phrase simple, le deuxième proverbe doit aussi l'être
+    # Sinon, on passe directement à la recherche d'un proverbe ayant les mêmes caractéristiques grammaticales et sémantique à part lui-même
+    if pvb1["type de phrase"] == "phrase simple":
+      candidats = [pvb.index(p) for p in pvb if ((pvb1["caractéristiques"] == p["caractéristiques"]) and (pvb.index(p) != i_debut) and (p["type de phrase"] != "subordonnée relative"))]
+    else:
+      candidats = [pvb.index(p) for p in pvb if ((pvb1["caractéristiques"] == p["caractéristiques"]) and (pvb.index(p) != i_debut))]
+    if candidats == []:
+        print("Pas de valeur similaire")
+        return -1
+    else:
+        i_fin = candidats[randint(0, len(candidats) - 1)]
+    return i_fin
+
+def verifier_caracteristiques2(i_debut, i_fin, pvb):
+  pvb1 = pvb[i_debut]
+  pvb2 = pvb[i_fin]
+
+  # A la recherche d'un proverbe ayant les mêmes caractéristiques grammaticales autre que le proverbe  de départ
+  # Si ils ont le même sens, le connecteur qui les séparera sera ".", sinon on utilisera des connecteurs d'opposition
+  connecteur = (", mais", ", sauf que", ", toutefois")
+  candidats = [pvb.index(p) for p in pvb if ((pvb1["caractéristiques"][0:2] == p["caractéristiques"][0:2]) and (pvb.index(p) != i_debut))]
+  if candidats == []:
+      print("Pas de valeur similaire")
+      return -1, None
+  else:
+      i_fin = candidats[randint(0, len(candidats) - 1)]
+      pvb2 = pvb[i_fin]
+  if pvb1["caractéristiques"][2] != pvb2["caractéristiques"][2]:
+    i_dernier_connecteur = len(connecteur) - 1
+    mot = connecteur[randint(0, i_dernier_connecteur)]
+  else:
+    mot = ' ;'
+  return i_fin, mot
+
+
+# Fonction proncipale
+def generer_citation(citation, opt, choix):
+    if type(choix) == StringVar:
+      choix = choix.get()
+      if choix == "":
+        i_dernier_cate = len(cate) - 1
+        choix = cate[randint(0, i_dernier_cate)]
+      else:
+        choix = cate[options.index(choix)]
+    pvb = choix[opt]
+    limite = len(pvb) - 1
+    i_debut = randint(0, limite)
+    i_fin = randint(0, limite)
+
+    if opt == 1: # Ici, in génère des proverbe long
+
+        i_fin, connecteur = verifier_caracteristiques2(i_debut, i_fin, pvb)
+
+        # Si il n'y a pas de proverbes qui peut être mélangé avec celui de départ, on regénère un nouveau
+        if i_fin == -1:
+          generer_citation(citation, 1, choix)
+          return None
+        debut_citation = pvb[i_debut]["proverbe"] + connecteur
+        fin_citation = pvb[i_fin]["proverbe"]
+        fin_citation = fin_citation[0].lower() + fin_citation[1:]
+        pvb1 = debut_citation
+        pvb2 = fin_citation
+
+    else: # Ici, in génère des proverbe court
+      
+        i_fin = verifier_caracteristiques1(i_debut, i_fin, limite, pvb)
+
+        # Si il n'y a pas de proverbes qui peut être mélangé avec celui générer de base, on regénère un nouveau
+        if i_fin == -1: 
+          generer_citation(citation, 0, choix)
+          return None
+        pvb1 = pvb[i_debut]["1ere partie"] + " " + pvb[i_debut]["2eme partie"]
+        pvb2 = pvb[i_fin]["1ere partie"] + " " + pvb[i_fin]["2eme partie"]
+        debut_citation = pvb[i_debut]["1ere partie"]
+        fin_citation = pvb[i_fin]["2eme partie"]
+    
+    # Màj des étiquettes
+    citation.config(text = f'~~~~ " {debut_citation} {fin_citation} " ~~~~')
+    combinaison.config(text = f""" Cette citation a été obtenu en combinant : \n\n "{pvb1}" \n et \n "{pvb2}" """)
+
+
+# ==================== INTERFACE GRAPHIQUE ====================
+
+# Couleur par défaut
+blanc = "#dddddd"
+noir = "#333333"
+bleu = "#0099ff"
+
+# Fonctions de design
+def changer_sombre():
+  main.config(bg = noir)
+  theme.config(bg = noir)
+  instruction.config(bg = noir, fg = blanc)
+  combinaison.config(bg = noir, fg = blanc)
+  citation.config(bg = noir)
+  bienvenue.config(bg = noir)
+  cadre1.config(bg = noir)
+  cadre2.config(bg = noir)
+  sombre.config(bg = bleu, fg = "white")
+  clair.config(bg = blanc, fg = "black")
+
+def changer_clair():
+  main.config(bg = blanc)
+  theme.config(bg = blanc)
+  instruction.config(bg = blanc, fg = "black")
+  combinaison.config(bg = blanc, fg = "black")
+  citation.config(bg = blanc, fg = "green")
+  bienvenue.config(bg = blanc)
+  cadre1.config(bg = blanc)
+  cadre2.config(bg = blanc)
+  sombre.config(bg = blanc, fg = "black")
+  clair.config(bg = bleu, fg = "white")
+
+# Fenêtre principale
+main = Tk()
+main.title('Générateur de citations')
+main.iconbitmap('projet_algo.ico')
+main.config(bg = blanc)
+main.state('zoomed')
+main.option_add("*Background", blanc)
+main.option_add("*Button.Background", bleu)
+main.option_add("*Button.Foreground", "white")
+main.option_add("*Button.Relief", "solid")
+main.option_add("*Font", "Arial 15")
+#=============================================
+
+
+bienvenue = Label(main, text = "Bienvenue sur le générateur de citations !", font = ("Arial", 25), fg = "#0077ff")
+bienvenue.pack(ipadx = 10, ipady = 10)
+
+
+# Theme de l'application
+theme = Label(main, text = "Thème de l'application", fg = "#777777")
+theme.pack()
+
+cadre1 = Frame(main)
+cadre1.pack()
+
+clair = Button(cadre1, text = "Clair", command = changer_clair)
+clair.pack(side = "left", padx = 5, pady = 5)
+
+sombre = Button(cadre1, text = "Sombre", bg = blanc, fg = "black", command = changer_sombre)
+sombre.pack(padx = 5, pady = 5)
+#=============================================
+
+
+# Fonctions principales
+cadre2 = Frame(main)
+cadre2.pack()
+
+instruction = Label(cadre2, text = "Appuyer sur le bouton pour générer une citation inédite ! \n \nChoisissez la catégorie de proverbes que vous sohaitez")
+instruction.pack(side = "left")
+
+choix = StringVar(cadre2)
+choix.set("")
+options = ["sagesse", "travail", "temps", "amour", "amitie", "argent", "verite", "nature"]
+categorie = OptionMenu(cadre2, choix, *options)
+categorie.pack(side = "bottom")
+
+generer1 = Button(main, text = "Générer un proverbe court", command = lambda: generer_citation(citation, 0, choix))
+generer1.pack(padx = 10, pady = 10)
+
+generer2 = Button(main, text = "Générer un proverbe long", command = lambda: generer_citation(citation, 1, choix))
+generer2.pack(padx = 10, pady = 10)
+
+citation = Label(main, text = '~~~~""~~~~', font = ("Imperial Script", 25, "bold"), fg = "green")
+citation.pack()
+
+combinaison = Label(main, text = "Vous verrez ici quels proverbes on été combinés")
+combinaison.pack()
+#=============================================
+
+cate = [sagesse, travail, temps, amour, amitie, argent, verite, nature]
+
 # Proverbes
 sagesse = [
   [
@@ -543,185 +723,5 @@ nature = [
     }
   ]
 ]
-
-cate = [sagesse, travail, temps, amour, amitie, argent, verite, nature]
-
-
-
-# ==================== FONCTIONS DE L'APPLICATION ====================
-
-def verifier_caracteristiques1(i_debut, i_fin, limite, pvb):
-    pvb1 = pvb[i_debut]
-    pvb2 = pvb[i_fin]
-
-    # Si le proverbes de départ est une phrase simple, le deuxième proverbe doit aussi l'être
-    # Sinon, on passe directement à la recherche d'un proverbe ayant les mêmes caractéristiques grammaticales et sémantique à part lui-même
-    if pvb1["type de phrase"] == "phrase simple":
-      candidats = [pvb.index(p) for p in pvb if ((pvb1["caractéristiques"] == p["caractéristiques"]) and (pvb.index(p) != i_debut) and (p["type de phrase"] != "subordonnée relative"))]
-    else:
-      candidats = [pvb.index(p) for p in pvb if ((pvb1["caractéristiques"] == p["caractéristiques"]) and (pvb.index(p) != i_debut))]
-    if candidats == []:
-        print("Pas de valeur similaire")
-        return -1
-    else:
-        i_fin = candidats[randint(0, len(candidats) - 1)]
-    return i_fin
-
-def verifier_caracteristiques2(i_debut, i_fin, pvb):
-  pvb1 = pvb[i_debut]
-  pvb2 = pvb[i_fin]
-
-  # A la recherche d'un proverbe ayant les mêmes caractéristiques grammaticales autre que le proverbe  de départ
-  # Si ils ont le même sens, le connecteur qui les séparera sera ".", sinon on utilisera des connecteurs d'opposition
-  connecteur = (", mais", ", sauf que", ", toutefois")
-  candidats = [pvb.index(p) for p in pvb if ((pvb1["caractéristiques"][0:2] == p["caractéristiques"][0:2]) and (pvb.index(p) != i_debut))]
-  if candidats == []:
-      print("Pas de valeur similaire")
-      return -1, None
-  else:
-      i_fin = candidats[randint(0, len(candidats) - 1)]
-      pvb2 = pvb[i_fin]
-  if pvb1["caractéristiques"][2] != pvb2["caractéristiques"][2]:
-    i_dernier_connecteur = len(connecteur) - 1
-    mot = connecteur[randint(0, i_dernier_connecteur)]
-  else:
-    mot = ' ;'
-  return i_fin, mot
-
-
-# Fonction proncipale
-def generer_citation(citation, opt, choix):
-    if type(choix) == StringVar:
-      choix = choix.get()
-      if choix == "":
-        i_dernier_cate = len(cate) - 1
-        choix = cate[randint(0, i_dernier_cate)]
-      else:
-        choix = cate[options.index(choix)]
-    pvb = choix[opt]
-    limite = len(pvb) - 1
-    i_debut = randint(0, limite)
-    i_fin = randint(0, limite)
-
-    if opt == 1: # Ici, in génère des proverbe long
-
-        i_fin, connecteur = verifier_caracteristiques2(i_debut, i_fin, pvb)
-
-        # Si il n'y a pas de proverbes qui peut être mélangé avec celui de départ, on regénère un nouveau
-        if i_fin == -1:
-          generer_citation(citation, 1, choix)
-          return None
-        debut_citation = pvb[i_debut]["proverbe"] + connecteur
-        fin_citation = pvb[i_fin]["proverbe"]
-        fin_citation = fin_citation[0].lower() + fin_citation[1:]
-        pvb1 = debut_citation
-        pvb2 = fin_citation
-
-    else: # Ici, in génère des proverbe court
-      
-        i_fin = verifier_caracteristiques1(i_debut, i_fin, limite, pvb)
-
-        # Si il n'y a pas de proverbes qui peut être mélangé avec celui générer de base, on regénère un nouveau
-        if i_fin == -1: 
-          generer_citation(citation, 0, choix)
-          return None
-        pvb1 = pvb[i_debut]["1ere partie"] + " " + pvb[i_debut]["2eme partie"]
-        pvb2 = pvb[i_fin]["1ere partie"] + " " + pvb[i_fin]["2eme partie"]
-        debut_citation = pvb[i_debut]["1ere partie"]
-        fin_citation = pvb[i_fin]["2eme partie"]
-    
-    # Màj des étiquettes
-    citation.config(text = f'~~~~ " {debut_citation} {fin_citation} " ~~~~')
-    combinaison.config(text = f""" Cette citation a été obtenu en combinant : \n\n "{pvb1}" \n et \n "{pvb2}" """)
-
-
-# ==================== INTERFACE GRAPHIQUE ====================
-
-# Couleur par défaut
-blanc = "#dddddd"
-noir = "#333333"
-bleu = "#0099ff"
-
-# Fonctions de design
-def changer_sombre():
-  main.config(bg = noir)
-  theme.config(bg = noir)
-  instruction.config(bg = noir, fg = blanc)
-  combinaison.config(bg = noir, fg = blanc)
-  citation.config(bg = noir)
-  bienvenue.config(bg = noir)
-  cadre.config(bg = noir)
-  sombre.config(bg = bleu, fg = "white")
-  clair.config(bg = blanc, fg = "black")
-
-def changer_clair():
-  main.config(bg = blanc)
-  theme.config(bg = blanc)
-  instruction.config(bg = blanc, fg = "black")
-  combinaison.config(bg = blanc, fg = "black")
-  citation.config(bg = blanc, fg = "green")
-  bienvenue.config(bg = blanc)
-  cadre.config(bg = blanc)
-  sombre.config(bg = blanc, fg = "black")
-  clair.config(bg = bleu, fg = "white")
-
-# Fenêtre principale
-main = Tk()
-main.title('Générateur de citations')
-main.iconbitmap('projet_algo.ico')
-main.config(bg = blanc)
-main.state('zoomed')
-main.option_add("*Background", blanc)
-main.option_add("*Button.Background", bleu)
-main.option_add("*Button.Foreground", "white")
-main.option_add("*Button.Relief", "solid")
-main.option_add("*Font", "Arial 15")
-#=============================================
-
-
-bienvenue = Label(main, text = "Bienvenue sur le générateur de citations !", font = ("Arial", 25), fg = "#0077ff")
-bienvenue.pack(ipadx = 10, ipady = 10)
-
-
-# Theme de l'application
-theme = Label(main, text = "Thème de l'application", fg = "#777777")
-theme.pack()
-
-cadre1 = Frame(main)
-cadre1.pack()
-
-clair = Button(cadre1, text = "Clair", command = changer_clair)
-clair.pack(side = "left", padx = 5, pady = 5)
-
-sombre = Button(cadre1, text = "Sombre", bg = blanc, fg = "black", command = changer_sombre)
-sombre.pack(padx = 5, pady = 5)
-#=============================================
-
-
-# Fonctions principales
-cadre2 = Frame(main)
-cadre2.pack()
-
-instruction = Label(cadre2, text = "Appuyer sur le bouton pour générer une citation inédite ! \n \nChoisissez la catégorie de proverbes que vous sohaitez")
-instruction.pack(side = "left")
-
-choix = StringVar(cadre2)
-choix.set("")
-options = ["sagesse", "travail", "temps", "amour", "amitie", "argent", "verite", "nature"]
-categorie = OptionMenu(cadre2, choix, *options)
-categorie.pack(side = "bottom")
-
-generer1 = Button(main, text = "Générer un proverbe court", command = lambda: generer_citation(citation, 0, choix))
-generer1.pack(padx = 10, pady = 10)
-
-generer2 = Button(main, text = "Générer un proverbe long", command = lambda: generer_citation(citation, 1, choix))
-generer2.pack(padx = 10, pady = 10)
-
-citation = Label(main, text = '~~~~""~~~~', font = ("Imperial Script", 25, "bold"), fg = "green")
-citation.pack()
-
-combinaison = Label(main, text = "Vous verrez ici quels proverbes on été combinés")
-combinaison.pack()
-#=============================================
 
 mainloop()
