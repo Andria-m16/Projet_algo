@@ -1,5 +1,20 @@
 from tkinter import *
 from random import *
+from tkinter.messagebox import *
+from json import *
+
+# NB: 0 représente les proverbes simples, tandis 1 représente les proverbes complexes
+
+# Proverbes chargés depuis le fichier json
+try:
+  with open("donnee.json", "r", encoding="utf-8") as f:
+    liste_pvb = load(f)
+except FileNotFoundError:
+  print("Il vous manque un fichier")
+
+cate = []
+for valeur in liste_pvb.values():
+  cate.append(valeur)
 
 # ==================== FONCTIONS DE L'APPLICATION ====================
 
@@ -25,7 +40,7 @@ def verifier_caracteristiques2(i_debut, i_fin, pvb):
   pvb2 = pvb[i_fin]
 
   # A la recherche d'un proverbe ayant les mêmes caractéristiques grammaticales autre que le proverbe  de départ
-  # Si ils ont le même sens, le connecteur qui les séparera sera ".", sinon on utilisera des connecteurs d'opposition
+  # Si ils ont le même sens, le connecteur qui les séparera sera ";", sinon on utilisera des connecteurs d'opposition
   connecteur = (", mais", ", sauf que", ", toutefois")
   candidats = [pvb.index(p) for p in pvb if ((pvb1["caractéristiques"][0:2] == p["caractéristiques"][0:2]) and (pvb.index(p) != i_debut))]
   if candidats == []:
@@ -44,19 +59,21 @@ def verifier_caracteristiques2(i_debut, i_fin, pvb):
 
 # Fonction proncipale
 def generer_citation(citation, opt, choix):
-    if type(choix) == StringVar:
+    if type(choix) == StringVar: 
       choix = choix.get()
-      if choix == "":
+      if choix == "": # Si l'utilisateur n'a pas choisi de catégorie alors on en génère un aléatoirement
         i_dernier_cate = len(cate) - 1
         choix = cate[randint(0, i_dernier_cate)]
       else:
-        choix = cate[options.index(choix)]
+        choix = liste_pvb[choix]
     pvb = choix[opt]
+    if pvb == []:
+      return None
     limite = len(pvb) - 1
     i_debut = randint(0, limite)
     i_fin = randint(0, limite)
 
-    if opt == 1: # Ici, in génère des proverbe long
+    if opt == 1: # Ici, on génère des proverbe long
 
         i_fin, connecteur = verifier_caracteristiques2(i_debut, i_fin, pvb)
 
@@ -85,7 +102,56 @@ def generer_citation(citation, opt, choix):
     
     # Màj des étiquettes
     citation.config(text = f'~~~~ " {debut_citation} {fin_citation} " ~~~~')
-    combinaison.config(text = f""" Cette citation a été obtenu en combinant : \n\n "{pvb1}" \n et \n "{pvb2}" """)
+    combinaison.config(text = f""" "{pvb1}" \n et \n "{pvb2}" """)
+
+def ajouter_pvb(options, categorie, new_categorie, new_caracteristiques, liste_pvb, proverbe, verbe = None):
+
+  # On récupère ce que l'utilisateur a saisi
+  proverbe = proverbe.get()
+  new_caracteristiques = new_caracteristiques.get().lower()
+  new_caracteristiques = new_caracteristiques.replace(" ", "")
+  new_caracteristiques = new_caracteristiques.split(",")
+  new_categorie = new_categorie.get().strip().lower()
+  
+  # On affiche un message d'erreur si l'utilisateur n'a rien entré
+  if (proverbe == "") or (new_caracteristiques == "") or (new_categorie == ""):
+    creer_fenetre_alerte()
+    return None
+
+  caracteristiques = []
+  for car in new_caracteristiques:
+    caracteristiques.append(car)
+
+  if new_categorie not in options:
+    liste_pvb.update({new_categorie: [[], []]})
+    new_categorie = f"{new_categorie}"
+    categorie["menu"].add_command(label = new_categorie)
+
+  if verbe != None:
+    verbe = verbe.get()
+    proverbe = proverbe.split(verbe, 1)
+    if ("Qui" in proverbe[0]) or ("qui" in proverbe[0]):
+      type_phrase = "subordonnée relative"
+    else:
+      type_phrase = "phrase simple"
+    zone = liste_pvb[new_categorie][0]
+    ajout = {
+      "1ere partie": proverbe[0],
+      "2eme partie": verbe + proverbe[1],
+      "type de phrase": type_phrase,
+      "caractéristiques": caracteristiques
+    }
+    zone.append(ajout)
+  else:
+    zone = liste_pvb[new_categorie][1]
+    ajout = {
+      "proverbe": proverbe,
+      "caractéristiques": caracteristiques
+    }
+    zone.append(ajout)
+  with open("donnee.json", "w", encoding="utf-8") as f:
+    dump(liste_pvb, f, indent = 4, ensure_ascii = False)
+  return None
 
 
 # ==================== INTERFACE GRAPHIQUE ====================
@@ -96,29 +162,50 @@ noir = "#333333"
 bleu = "#0099ff"
 
 # Fonctions de design
-def changer_sombre():
+def creer_fenetre_alerte():
+    main.bell()
+    showwarning("Attention", "vous avez oubliez de saisir quelque chose")
+
+def changer_sombre(fenetre):
+  for widget in fenetre.winfo_children():
+    fg_inchange = [bienvenue, theme]
+    if type(widget) == Label and (widget not in fg_inchange):
+      widget.config(bg = noir, fg = blanc)
+    elif type(widget) == Label:
+      widget.config(bg = noir)
+    elif (type(widget)) == Frame:
+      widget.config(bg = noir)
+      changer_sombre(widget) 
   main.config(bg = noir)
-  theme.config(bg = noir)
-  instruction.config(bg = noir, fg = blanc)
-  combinaison.config(bg = noir, fg = blanc)
-  citation.config(bg = noir)
-  bienvenue.config(bg = noir)
-  cadre1.config(bg = noir)
-  cadre2.config(bg = noir)
+  citation.config(bg = noir, fg = "orange")
   sombre.config(bg = bleu, fg = "white")
   clair.config(bg = blanc, fg = "black")
 
-def changer_clair():
+def changer_clair(fenetre):
+  for widget in fenetre.winfo_children():
+    fg_inchange = [bienvenue, theme]
+    if type(widget) == Label and (widget not in fg_inchange):
+      widget.config(bg = blanc, fg = "black")
+    elif type(widget) == Label:
+      widget.config(bg = blanc)
+    elif (type(widget)) == Frame:
+      widget.config(bg = blanc)
+      changer_clair(widget)
   main.config(bg = blanc)
-  theme.config(bg = blanc)
-  instruction.config(bg = blanc, fg = "black")
-  combinaison.config(bg = blanc, fg = "black")
   citation.config(bg = blanc, fg = "green")
-  bienvenue.config(bg = blanc)
-  cadre1.config(bg = blanc)
-  cadre2.config(bg = blanc)
   sombre.config(bg = blanc, fg = "black")
   clair.config(bg = bleu, fg = "white")
+
+def ignorer(opt, verbe, instruction):
+  save.pack()
+  if opt == 0:
+    instruction.config(text = "Catégorie, Caractéristiques (nombre, genre, sens + ou -), \nProverbe et Verbe noyau")
+    verbe.pack(padx = 10, pady = 10)
+    save.config(command = lambda: ajouter_pvb(options, categorie, new_categorie, new_caracteristiques, liste_pvb, proverbe, verbe))
+  else:
+    instruction.config(text = f"""Catégorie, Caractéristiques (nombre, genre, sens + ou -) et Proverbe \n\nLe genre sera "invariable" si le sujet du proverbe n'est pas bien défini """)
+    verbe.pack_forget()
+    save.config(command = lambda: ajouter_pvb(options, categorie, new_categorie, new_caracteristiques, liste_pvb, proverbe))
 
 # Fenêtre principale
 main = Tk()
@@ -130,11 +217,12 @@ main.option_add("*Background", blanc)
 main.option_add("*Button.Background", bleu)
 main.option_add("*Button.Foreground", "white")
 main.option_add("*Button.Relief", "solid")
+main.option_add("*Entry.Background", "white")
 main.option_add("*Font", "Arial 15")
 #=============================================
 
 
-bienvenue = Label(main, text = "Bienvenue sur le générateur de citations !", font = ("Arial", 25), fg = "#0077ff")
+bienvenue = Label(main, text = f"{7 * "—"} Bienvenue sur le générateur de citations ! {7 * "—"}", font = ("Arial", 25), fg = "#0077ff")
 bienvenue.pack(ipadx = 10, ipady = 10)
 
 
@@ -145,24 +233,25 @@ theme.pack()
 cadre1 = Frame(main)
 cadre1.pack()
 
-clair = Button(cadre1, text = "Clair", command = changer_clair)
+clair = Button(cadre1, text = "|| Clair", command = lambda: changer_clair(main))
 clair.pack(side = "left", padx = 5, pady = 5)
 
-sombre = Button(cadre1, text = "Sombre", bg = blanc, fg = "black", command = changer_sombre)
+sombre = Button(cadre1, text = "◯ Sombre", bg = blanc, fg = "black", command = lambda: changer_sombre(main))
 sombre.pack(padx = 5, pady = 5)
 #=============================================
 
 
-# Fonctions principales
+# Widgets principaux
 cadre2 = Frame(main)
 cadre2.pack()
 
-instruction = Label(cadre2, text = "Appuyer sur le bouton pour générer une citation inédite ! \n \nChoisissez la catégorie de proverbes que vous sohaitez")
-instruction.pack(side = "left")
+Label(cadre2, text = "Choisissez la catégorie de proverbes que vous souhaitez ").pack(side = "left")
 
 choix = StringVar(cadre2)
 choix.set("")
-options = ["sagesse", "travail", "temps", "amour", "amitie", "argent", "verite", "nature"]
+options = []
+for cle in liste_pvb.keys():
+  options.append(cle)
 categorie = OptionMenu(cadre2, choix, *options)
 categorie.pack(side = "bottom")
 
@@ -175,553 +264,36 @@ generer2.pack(padx = 10, pady = 10)
 citation = Label(main, text = '~~~~""~~~~', font = ("Imperial Script", 25, "bold"), fg = "green")
 citation.pack()
 
-combinaison = Label(main, text = "Vous verrez ici quels proverbes on été combinés")
+combinaison = Label(main, text = "Vous verrez ici quels proverbes on été combinés", font = ("Lucida Bright", 13, "bold"))
 combinaison.pack()
+
+cadre3 = Frame(main)
+cadre3.pack()
+
+simple = Button(cadre3, text = "Ajouter un proverbe simple", command = lambda: ignorer(0, verbe, instruction))
+simple.pack(padx = 10, pady = 10)
+
+complexe = Button(cadre3, text = "Ajouter proverbe complexe", command = lambda: ignorer(1, verbe, instruction))
+complexe.pack(padx = 10, pady = 10)
+
+Label(cadre3, text = "Les proverbes simples sont des proverbes qui n'ont qu'un seul verbe noyau \n ou qui sont des phrases contenant une subordonnée relative")
+
+instruction = Label(cadre3, text = "")
+instruction.pack()
+new_categorie = Entry(cadre3)
+new_categorie.pack(side = "left", padx = 10, pady = 10)
+
+new_caracteristiques = Entry(cadre3)
+new_caracteristiques.pack(side = "left", padx = 10, pady = 10)
+
+proverbe = Entry(cadre3)
+proverbe.pack(side = "left", padx = 10, pady = 10)
+
+verbe = Entry(cadre3)
+verbe.pack(padx = 10, pady = 10)
+
+save = Button(main, text = "Enregistrer")
+
 #=============================================
-
-cate = [sagesse, travail, temps, amour, amitie, argent, verite, nature]
-
-# Proverbes
-sagesse = [
-  [
-    {
-      "1ere partie": "L'erreur",
-      "2eme partie": "est humaine",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'féminin', '-')
-    },
-    {
-      "1ere partie": "La patience",
-      "2eme partie": "est amère, mais son fruit est doux",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'féminin', '+')
-    },
-    {
-      "1ere partie": "La nuit",
-      "2eme partie": "porte conseil",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'féminin', '+')
-    },
-    {
-      "1ere partie": "L'expérience",
-      "2eme partie": "est la mère de la sagesse",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'féminin', '+')
-    },
-    {
-      "1ere partie": "La vérité",
-      "2eme partie": "sort de la bouche des enfants",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'féminin', '+')
-    },
-    {
-      "1ere partie": "Celui qui sait",
-      "2eme partie": "ne parle pas",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Qui veut voyager loin",
-      "2eme partie": "ménage sa monture",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    }
-  ],
-  [
-    {
-      "proverbe": "Chassez le naturel, il revient au galop",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "proverbe": "Il faut tourner sept fois sa langue dans sa bouche avant de parler",
-      "caractéristiques": ('singulier', 'invariable', '+')
-    },
-    {
-      "proverbe": "Loin des yeux, loin du cœur",
-      "caractéristiques": ('singulier', 'invariable', '-')
-    },
-    {
-      "proverbe": "Petit à petit, l'oiseau fait son nid",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "proverbe": "Prudence est mère de sûreté",
-      "caractéristiques": ('singulier', 'féminin', '+')
-    },
-    {
-      "proverbe": "Rira bien qui rira le dernier",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    }
-  ]
-]
-
-travail = [
-  [
-    {
-      "1ere partie": "L'oisiveté",
-      "2eme partie": "est la mère de tous les vices",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'féminin', '-')
-    },
-    {
-      "1ere partie": "Les bons comptes",
-      "2eme partie": "font les bons amis",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('pluriel', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Le travail",
-      "2eme partie": "anoblit l'homme",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "L'effort",
-      "2eme partie": "récompense toujours la persévérance",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Qui ne risque rien",
-      "2eme partie": "n'a rien",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "1ere partie": "Qui cherche",
-      "2eme partie": "trouve",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    }
-  ],
-  [
-    {
-      "proverbe": "C'est au pied du mur qu'on voit le maçon",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "proverbe": "Cent fois sur le métier remettez votre ouvrage",
-      "caractéristiques": ('pluriel', 'invariable', '+')
-    },
-    {
-      "proverbe": "Il faut battre le fer tant qu'il est chaud",
-      "caractéristiques": ('singulier', 'invariable', '+')
-    },
-    {
-      "proverbe": "Chaque chose en son temps",
-      "caractéristiques": ('singulier', 'invariable', '+')
-    },
-    {
-      "proverbe": "Pierre qui roule n'amasse pas mousse",
-      "caractéristiques": ('singulier', 'féminin', '-')
-    },
-    {
-      "proverbe": "Paris ne s'est pas fait en un jour",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    }
-  ]
-]
-
-temps = [
-  [
-    {
-      "1ere partie": "Le temps",
-      "2eme partie": "est un grand maître",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Le temps",
-      "2eme partie": "guérit toutes les blessures",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "L'avenir",
-      "2eme partie": "appartient à ceux qui se lève tôt",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Les jours",
-      "2eme partie": "se suivent et ne se ressemblent pas",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('pluriel', 'masculin', '-')
-    },
-    {
-      "1ere partie": "Qui prend son temps",
-      "2eme partie": "arrive à temps",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    }
-  ],
-  [
-    {
-      "proverbe": "Autre temps, autres mœurs",
-      "caractéristiques": ('pluriel', 'invariable', '-')
-    },
-    {
-      "proverbe": "Il faut donner du temps au temps",
-      "caractéristiques": ('singulier', 'invariable', '+')
-    },
-    {
-      "proverbe": "Chaque jour suffit sa peine",
-      "caractéristiques": ('singulier', 'féminin', '-')
-    },
-    {
-      "proverbe": "Demain est un autre jour",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "proverbe": "On ne peut pas être et avoir été",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "proverbe": "Après la pluie, le beau temps",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "proverbe": "L'oisiveté perd le temps",
-      "caractéristiques": ('singulier', 'féminin', '-')
-    }
-  ]
-]
-
-amour = [
-  [
-    {
-      "1ere partie": "L'amour",
-      "2eme partie": "est aveugle",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "1ere partie": "Le cœur",
-      "2eme partie": "a ses raisons que la raison ne connaît point",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "L'amour",
-      "2eme partie": "triomphe de tout",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Les absents",
-      "2eme partie": "ont toujours tort",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('pluriel', 'masculin', '-')
-    },
-    {
-      "1ere partie": "Qui aime bien",
-      "2eme partie": "châtie bien",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Qui s'y frotte",
-      "2eme partie": "s'y pique",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    }
-  ],
-  [
-    {
-      "proverbe": "Loin des yeux, près du cœur",
-      "caractéristiques": ('singulier', 'invariable', '+')
-    },
-    {
-      "proverbe": "Abondance de biens ne nuit pas",
-      "caractéristiques": ('singulier', 'féminin', '+')
-    },
-    {
-      "proverbe": "On ne badine pas avec l'amour",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "proverbe": "Il vaut mieux être seul que mal accompagné",
-      "caractéristiques": ('singulier', 'invariable', '+')
-    },
-    {
-      "proverbe": "L'amour fait passer le temps, le temps fait passer l'amour",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "proverbe": "Un de perdu, dix de retrouvés",
-      "caractéristiques": ('pluriel', 'masculin', '+')
-    }
-  ]
-]
-
-amitie = [
-  [
-    {
-      "1ere partie": "Un ami",
-      "2eme partie": "se connaît dans le besoin",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Les vrais amis",
-      "2eme partie": "sont rares comme les diamants",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('pluriel', 'masculin', '+')
-    },
-    {
-      "1ere partie": "L'amitié",
-      "2eme partie": "est une âme en deux corps",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'féminin', '+')
-    },
-    {
-      "1ere partie": "Les amis de nos amis",
-      "2eme partie": "sont nos amis",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('pluriel', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Qui trouve un ami",
-      "2eme partie": "trouve un trésor",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    }
-  ],
-  [
-    {
-      "proverbe": "Dis-moi qui tu fréquentes, je te dirai qui tu es",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "proverbe": "Mieux vaut un bon voisin qu'un distant parent",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "proverbe": "Au besoin on connaît l'ami",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "proverbe": "Les petits cadeaux entretiennent l'amitié",
-      "caractéristiques": ('pluriel', 'masculin', '+')
-    },
-    {
-      "proverbe": "On ne choisit pas sa famille, mais on choisit ses amis",
-      "caractéristiques": ('singulier', 'féminin', '+')
-    },
-    {
-      "proverbe": "Entre amis, tout est commun",
-      "caractéristiques": ('pluriel', 'invariable', '+')
-    },
-    {
-      "proverbe": "Un ami fidèle est un refuge puissant",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    }
-  ]
-]
-
-argent = [
-  [
-    {
-      "1ere partie": "L'argent",
-      "2eme partie": "ne fait pas le bonheur",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "1ere partie": "L'argent",
-      "2eme partie": "est un bon serviteur mais un mauvais maître",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "1ere partie": "Les affaires",
-      "2eme partie": "sont les affaires",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('pluriel', 'féminin', '-')
-    },
-    {
-      "1ere partie": "Avare",
-      "2eme partie": "amasse pour les autres",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "1ere partie": "Qui paie ses dettes",
-      "2eme partie": "s'enrichit",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Qui donne aux pauvres",
-      "2eme partie": "prête à Dieu",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    }
-  ],
-  [
-    {
-      "proverbe": "Plaie d'argent n'est pas mortelle",
-      "caractéristiques": ('singulier', 'féminin', '+')
-    },
-    {
-      "proverbe": "Le temps, c'est de l'argent",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "proverbe": "Bien mal acquis ne profite jamais",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "proverbe": "Il n'y a pas de petit profit",
-      "caractéristiques": ('singulier', 'invariable', '+')
-    },
-    {
-      "proverbe": "L'argent n'a pas d'odeur",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "proverbe": "Rien n'est gratuit en ce bas monde",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    }
-  ]
-]
-
-verite = [
-  [
-    {
-      "1ere partie": "Le mensonge",
-      "2eme partie": "a les jambes courtes",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "1ere partie": "Toute vérité",
-      "2eme partie": "n'est pas bonne à dire",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'féminin', '-')
-    },
-    {
-      "1ere partie": "Les paroles",
-      "2eme partie": "s'envolent, les écrits restent",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('pluriel', 'féminin', '+')
-    },
-    {
-      "1ere partie": "Un homme averti",
-      "2eme partie": "en vaut deux",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Qui ne dit mot",
-      "2eme partie": "consent",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Qui sème le vent",
-      "2eme partie": "récolte la tempête",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    }
-  ],
-  [
-    {
-      "proverbe": "Il n'y a que la vérité qui blesse",
-      "caractéristiques": ('singulier', 'invariable', '-')
-    },
-    {
-      "proverbe": "Mieux vaut une vérité qui blesse qu'un mensonge qui séduit",
-      "caractéristiques": ('singulier', 'féminin', '+')
-    },
-    {
-      "proverbe": "Chacun voit midi à sa porte",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "proverbe": "Promesse faite est dette due",
-      "caractéristiques": ('singulier', 'féminin', '+')
-    },
-    {
-      "proverbe": "Il ne faut pas dire : Fontaine, je ne boirai pas de ton eau",
-      "caractéristiques": ('singulier', 'invariable', '-')
-    },
-    {
-      "proverbe": "Au royaume des aveugles, les unijambistes sont rois",
-      "caractéristiques": ('pluriel', 'masculin', '+')
-    }
-  ]
-]
-
-nature = [
-  [
-    {
-      "1ere partie": "Chien qui aboie",
-      "2eme partie": "ne mord pas",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Une hirondelle",
-      "2eme partie": "ne fait pas le printemps",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'féminin', '-')
-    },
-    {
-      "1ere partie": "Les chats",
-      "2eme partie": "ne font pas des chiens",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('pluriel', 'masculin', '+')
-    },
-    {
-      "1ere partie": "L'arbre",
-      "2eme partie": "cache souvent la forêt",
-      "type de phrase": "phrase simple",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    },
-    {
-      "1ere partie": "Qui dort",
-      "2eme partie": "dîne",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "1ere partie": "Qui vole un œuf",
-      "2eme partie": "vole un bœuf",
-      "type de phrase": "subordonnée relative",
-      "caractéristiques": ('singulier', 'masculin', '-')
-    }
-  ],
-  [
-    {
-      "proverbe": "Quand le chat n'est pas là, les souris dansent",
-      "caractéristiques": ('pluriel', 'féminin', '+')
-    },
-    {
-      "proverbe": "Il ne faut pas vendre la peau de l'ours avant de l'avoir tué",
-      "caractéristiques": ('singulier', 'invariable', '-')
-    },
-    {
-      "proverbe": "La nuit, tous les chats sont gris",
-      "caractéristiques": ('pluriel', 'masculin', '+')
-    },
-    {
-      "proverbe": "Il ne faut pas mettre tous ses œufs dans le même panier",
-      "caractéristiques": ('singulier', 'invariable', '-')
-    },
-    {
-      "proverbe": "À cheval donné, on ne regarde pas les dents",
-      "caractéristiques": ('singulier', 'masculin', '+')
-    },
-    {
-      "proverbe": "Goutte à goutte, l'eau creuse la pierre",
-      "caractéristiques": ('singulier', 'féminin', '+')
-    },
-    {
-      "proverbe": "Aux innocents les mains pleines",
-      "caractéristiques": ('pluriel', 'masculin', '+')
-    }
-  ]
-]
 
 mainloop()
