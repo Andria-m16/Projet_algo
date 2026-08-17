@@ -10,7 +10,7 @@ try:
   with open("donnee.json", "r", encoding="utf-8") as f:
     liste_pvb = load(f)
 except FileNotFoundError:
-  print("Il vous manque un fichier")
+  creer_fenetre_alerte()
 
 cate = []
 for valeur in liste_pvb.values():
