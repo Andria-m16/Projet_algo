@@ -29,7 +29,6 @@ def verifier_caracteristiques1(i_debut, i_fin, limite, pvb):
     else:
       candidats = [pvb.index(p) for p in pvb if ((pvb1["caractéristiques"] == p["caractéristiques"]) and (pvb.index(p) != i_debut))]
     if candidats == []:
-        print("Pas de valeur similaire")
         return -1
     else:
         i_fin = candidats[randint(0, len(candidats) - 1)]
@@ -44,7 +43,6 @@ def verifier_caracteristiques2(i_debut, i_fin, pvb):
   connecteur = (", mais", ", sauf que", ", toutefois")
   candidats = [pvb.index(p) for p in pvb if ((pvb1["caractéristiques"][0:2] == p["caractéristiques"][0:2]) and (pvb.index(p) != i_debut))]
   if candidats == []:
-      print("Pas de valeur similaire")
       return -1, None
   else:
       i_fin = candidats[randint(0, len(candidats) - 1)]
@@ -61,7 +59,7 @@ def verifier_caracteristiques2(i_debut, i_fin, pvb):
 def generer_citation(citation, opt, choix):
     if type(choix) == StringVar: 
       choix = choix.get()
-      if choix == "": # Si l'utilisateur n'a pas choisi de catégorie alors on en génère un aléatoirement
+      if choix == "▼": # Si l'utilisateur n'a pas choisi de catégorie alors on en génère un aléatoirement
         i_dernier_cate = len(cate) - 1
         choix = cate[randint(0, i_dernier_cate)]
       else:
@@ -203,7 +201,7 @@ def ignorer(opt, verbe, instruction):
     verbe.pack(padx = 10, pady = 10)
     save.config(command = lambda: ajouter_pvb(options, categorie, new_categorie, new_caracteristiques, liste_pvb, proverbe, verbe))
   else:
-    instruction.config(text = f"""Catégorie, Caractéristiques (nombre, genre, sens + ou -) et Proverbe \n\nLe genre sera "invariable" si le sujet du proverbe n'est pas bien défini """)
+    instruction.config(text = f"""Catégorie, Caractéristiques (nombre, genre, sens + ou -) et Proverbe \nLe genre sera "invariable" si le sujet du proverbe n'est pas bien défini """)
     verbe.pack_forget()
     save.config(command = lambda: ajouter_pvb(options, categorie, new_categorie, new_caracteristiques, liste_pvb, proverbe))
 
@@ -245,15 +243,16 @@ sombre.pack(padx = 5, pady = 5)
 cadre2 = Frame(main)
 cadre2.pack()
 
-Label(cadre2, text = "Choisissez la catégorie de proverbes que vous souhaitez ").pack(side = "left")
+Label(cadre2, text = "Choisissez la catégorie de proverbes que vous souhaitez : ").pack(side = "left")
 
 choix = StringVar(cadre2)
-choix.set("")
+choix.set("▼")
 options = []
 for cle in liste_pvb.keys():
   options.append(cle)
 categorie = OptionMenu(cadre2, choix, *options)
 categorie.pack(side = "bottom")
+categorie.config(indicatoron = 0)
 
 generer1 = Button(main, text = "Générer un proverbe court", command = lambda: generer_citation(citation, 0, choix))
 generer1.pack(padx = 10, pady = 10)
@@ -268,7 +267,7 @@ combinaison = Label(main, text = "Vous verrez ici quels proverbes on été combi
 combinaison.pack()
 
 cadre3 = Frame(main)
-cadre3.pack()
+cadre3.pack(pady = 10)
 
 simple = Button(cadre3, text = "Ajouter un proverbe simple", command = lambda: ignorer(0, verbe, instruction))
 simple.pack(padx = 10, pady = 10)
@@ -276,10 +275,9 @@ simple.pack(padx = 10, pady = 10)
 complexe = Button(cadre3, text = "Ajouter proverbe complexe", command = lambda: ignorer(1, verbe, instruction))
 complexe.pack(padx = 10, pady = 10)
 
-Label(cadre3, text = "Les proverbes simples sont des proverbes qui n'ont qu'un seul verbe noyau \n ou qui sont des phrases contenant une subordonnée relative")
+instruction = Label(cadre3, text = "Les proverbes simples sont des proverbes qui n'ont qu'un seul verbe noyau \n ou qui sont des phrases contenant une subordonnée relative")
+instruction.pack(padx = 10, pady = 10)
 
-instruction = Label(cadre3, text = "")
-instruction.pack()
 new_categorie = Entry(cadre3)
 new_categorie.pack(side = "left", padx = 10, pady = 10)
 
@@ -293,7 +291,6 @@ verbe = Entry(cadre3)
 verbe.pack(padx = 10, pady = 10)
 
 save = Button(main, text = "Enregistrer")
-
 #=============================================
 
 mainloop()
